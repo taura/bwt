@@ -103,7 +103,6 @@ namespace bwt {
     __attribute__((optimize("unroll-loops")))
     idx_t count_ones_in_range_8(uint8_t * b, uint8_t * e) {
       /* 64 bit (8 bytes)-aligned addresses b64 <= b and e64 <= e */
-      //uint8_t * b64 = (uint8_t *)((intptr_t)b - (intptr_t)b % 8);
       uint8_t * b64 = (uint8_t *)((intptr_t)(b + 7) - (intptr_t)(b + 7) % 8);
       uint8_t * e64 = (uint8_t *)((intptr_t)e - (intptr_t)e % 8);
       idx_t rb = 0;
@@ -161,7 +160,6 @@ namespace bwt {
       idx_t b = b_ + begin;
       idx_t e = e_ + begin;
       /* get 8 bit-aligned bit positions b <= b8 and e8 <= e  */
-      //idx_t b8 = b - b % 8;
       idx_t b8 = (b + 7) - (b + 7) % 8;
       idx_t e8 = e - e % 8;
       /* handle the case when b and e point to the same byte */

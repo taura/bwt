@@ -97,7 +97,7 @@ namespace bwt {
       decl_task_group tg;
       /* merge [a_beg,p) and [b_beg,q) into t */
       /* merge [p,b) and [q,d) into t + (p - a) + (q - c) */
-      tg_run(tg, [&] { 
+      tg_run(tg, { 
 	  p_merge(a_beg, p, b_beg, q, t_beg,           lt, merge_rec_threshold); 
 	});
       p_merge(p, a_end, q, b_end, t_beg + n1 + n2, lt, merge_rec_threshold);
@@ -116,7 +116,7 @@ namespace bwt {
       idx_t nh = n / 2;
       T * c = a_beg + nh;
       decl_task_group tg;
-      tg_run(tg, [&] { 
+      tg_run(tg, { 
 	  sort_range(a_beg, c, t_beg, lt,
 		     1 - dest, sort_rec_threshold, merge_rec_threshold);
 	});

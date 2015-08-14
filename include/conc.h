@@ -222,7 +222,6 @@ namespace bwt {
       idx_t n = (b - a) / 2;
       idx_t c = a + n;
       idx_t r = p + (4 * n) / g;
-      //tg_run(tg, [&] { make_sum(x, a, c, s, p + 1, r, g); });
       tg_run(tg, make_sum(x, a, c, s, p + 1, r, g));
       make_sum(x, c, b, s, r,     q, g);
       tg_wait(tg);
@@ -241,7 +240,6 @@ namespace bwt {
       idx_t c = a + n;
       idx_t r = p + (4 * n) / g;
       idx_t t1 = t + s[p+1];
-      //tg_run(tg, [&] { apply_sum(x, a, c, s, p + 1, r, g, t); });
       tg_run(tg, apply_sum(x, a, c, s, p + 1, r, g, t));
       idx_t res =  apply_sum(x, c, b, s, r,     q, g, t1);
       tg_wait(tg);
@@ -259,6 +257,7 @@ namespace bwt {
     /* TODO : allocate s on stack when small? 
        there are cases make_sum is useless */
     idx_t m = max((4 * (b - a)) / gran - 1, 1);
+    /* receive s rather than allocate */
     idx_t * s = new_<idx_t>(m, "temporary array to make prefix sum");
     make_sum(x, a, b, s, 0, m, gran);
     idx_t r =  apply_sum(x, a, b, s, 0, m, gran, 0);

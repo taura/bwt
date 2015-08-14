@@ -50,11 +50,6 @@ namespace bwt {
     alpha_t alpha0;
     alpha_t alpha1;
     int alpha_width; /* number of bits per alphabets */
-#if 0
-    /* interval at which prefix sums are recorded */
-    idx_t sum_interval;
-    idx_t add_count_zero_gran;
-#endif
     /* array of succinct bit vectors 
        bit_vectors[l] is the succinct bit vector for level l */
     succinct_bit_vector * bit_vectors;

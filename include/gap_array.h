@@ -37,8 +37,13 @@ namespace bwt {
       b = b_;
       sum_interval = sum_interval_;
       m = calc_overflow_array_sz(b - a + 1);
+      ps_a = a / sum_interval;
+      ps_b = b / sum_interval;
+
       small = new_<uint8_t>(b - a + 1, "gap small") - a;
       overflow = new_<overflow_entry>(m, "gap overflow");
+      ps = new_<idx_t>(ps_b - ps_a + 1, "gap prefix sum") - ps_a;
+
       /* parallel (doall) */
       // for(idx_t i = a; i < b + 1; i++)
       pfor(idx_t, i, a, b + 1, init_gran) {
@@ -50,8 +55,10 @@ namespace bwt {
 	overflow[i].i = -1;
 	overflow[i].c = -1;
       } end_pfor;
+#if 0
       ps = 0;
       ps_a = ps_b = 0;
+#endif
       stat.end(ts_event_gap_array_init);
     }
 
@@ -279,9 +286,11 @@ namespace bwt {
       /* we like to set 
 	 ps[k] = get(a) + ... + get(g*k - 1)
 	 (g = sum_gran) */
+#if 0
       ps_a = a / sum_interval;
       ps_b = b / sum_interval;
       ps = new_<idx_t>(ps_b - ps_a + 1, "gap prefix sum") - ps_a;
+#endif
       /* parallel (doall) */
       // for(idx_t k = ps_a; k < ps_b + 1; k++)
       pfor(idx_t, k, ps_a, ps_b + 1, (idx_t)1) {

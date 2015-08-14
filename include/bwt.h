@@ -198,6 +198,7 @@ namespace bwt {
     void count_alphabets(bwt_opt& opt) {
       stat.start(ts_event_bwt_count_alphabets);
       assert(C == 0);
+      /* memory allocation: can use a fixed address */
       C = new_<idx_t>(opt.alpha_max + 1, "count");
       for (idx_t c = 0; c <= opt.alpha_max; c++) {
 	C[c] = 0;
@@ -345,7 +346,6 @@ namespace bwt {
       } end_pfor;
       assert(s_rank != -1);
       assert(e_rank != -1);
-      // assert(ssa.n == ns || ssa.n == b - a);
 #if !defined(NDEBUG) || !NDEBUG
       if (opt.assert_level>=2) {
 	assert(ssa.count() == min(ns, b - a));
@@ -615,6 +615,7 @@ namespace bwt {
 	       bwt_opt& opt) {
     stat.start(ts_event_bwt_leaf);
     assert(a < b);
+    /* memory allocation: can use a fixed address */
     idx_t * SA0 = new_<idx_t>(b - a, "leaf sa");
     idx_t * SA = SA0 - a;
     sa_range(T, n, a, b, SA, opt.sort_rec_threshold, opt.merge_rec_threshold);
