@@ -851,7 +851,6 @@ namespace bwt {
       return bwt_leaf(T, n, a, b, L, W, opt);
     } else {
       idx_t c = (a + b) / 2;
-      bwt l = bwt_rec(T, n, a, c, L, W, opt);
       decl_task_group tg;
       tg_run(tg, l = bwt_rec(T, n, a, c, L, W, opt));
       bwt r = bwt_rec(T, n, c, b, L, W, opt);

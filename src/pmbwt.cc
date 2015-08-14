@@ -317,6 +317,7 @@ int main(int argc, char ** argv) {
     printf("==== repeat %d ====\n", repeat);
     bwt::bwt t = stat_pmbwt(T, L, n, opt, opt2);
     r = check_result(t, T, n);
+    t.fini(opt);
     if (!r) break;
   }
   if (r) dr_dump();
