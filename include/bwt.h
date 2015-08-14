@@ -852,6 +852,7 @@ namespace bwt {
     } else {
       idx_t c = (a + b) / 2;
       decl_task_group tg;
+      bwt l;
       tg_run(tg, l = bwt_rec(T, n, a, c, L, W, opt));
       bwt r = bwt_rec(T, n, c, b, L, W, opt);
       tg_wait(tg);
