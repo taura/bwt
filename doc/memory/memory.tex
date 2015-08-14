@@ -1,0 +1,116 @@
+\documentclass[12pt,dvipdfmx]{article}
+\setlength{\oddsidemargin}{-1.3truecm}
+\setlength{\evensidemargin}{-1.3truecm}
+\setlength{\textwidth}{18.5truecm}
+\setlength{\headsep}{1truecm}
+\setlength{\topmargin}{-2truecm}
+\setlength{\textheight}{25truecm}
+\usepackage{graphicx}
+\DeclareGraphicsExtensions{.pdf}
+\DeclareGraphicsExtensions{.eps}
+\graphicspath{{out/}{out/tex/}{out/tex/gpl/}{out/tex/svg/}{out/tex/dot/}}
+\usepackage{listings}
+\usepackage{fancybox}
+\usepackage{hyperref}
+\usepackage{color}
+
+\title{How much memory is needed}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+How much memory is needed to construct BWT of
+$n$ characters using Hayashi's method?
+
+\section{Leaf}
+First we analyze leaf case.  
+The flow of the algorithm for building BWT for range $[a,b)$ is:
+
+
+\begin{center}
+\begin{tabular}{|p{8cm}|l|l|}\hline
+                                    & bits                  & lifetime \\\hline
+build suffix array                  & $(b - a) \log n$      & 0 \\
+build BWT based on the suffix array & $(b - a) \log \sigma$ & 2 \\
+sample the suffix array             & $S \log n$            & 1 \\
+build character occurrence array    & $\sigma \log n$       & 1 \\
+build wavelet matrix                & $(b - a) \log \sigma$ & 1 \\\hline
+\end{tabular}
+\end{center}
+
+note:
+\begin{itemize}
+\item lifetime column indicates whether
+  the bits are required:
+  \begin{itemize}
+  \item (0): only temporarily; can be freed at some point 
+    during constructing the BWT of this range
+  \item (1): to represent the result of this range; can be
+    freed after it is merged into its parent range
+  \item (2): to represent the final result; cannot be
+    freed until the BWT of the whole range has been constructed
+  \end{itemize}
+
+\item $S$ can be chosen; 
+  in practice, $S$ will be $\in O(n / \log n)$,
+  so that this part will take $\in O(n)$;
+  this is a part of our augmented BWT.
+  In theory, we should choose $S \in O(n / \log n)$, 
+  to make the space for the sampled array $\in O(n)$.
+  In practice, we choose $S = n / 64 + 2$.
+\end{itemize}
+
+\section{Merge}
+Let's say we are merging two ranges $[a_1, b_1)$ and $[a_2, b_2)$.
+The overall structure of merge is this.
+
+\begin{center}
+\begin{tabular}{|p{8cm}|l|l|}\hline
+ & bits & lifetime \\\hline
+build gap array          & $(b_1 - a_1 + 1) (A + (1/B + 1/C) \log n)$ & 0 \\
+sort right samples       & $S \log n$                         & 0 \\
+scan the right BWT to fill the gap array & -                      & - \\
+prefix sum the gap array & -                                      & - \\
+build BWT based on the suffix array (output) & $(b_2 - a_1) \log \sigma$ & 0 \\
+build BWT based on the suffix array (result) & $(b_2 - a_1) \log \sigma$ & 2 \\
+resample sampled arrays  & $S \log n$                             & 1 \\
+build character occurrence array & $\sigma \log n$              & 1 \\
+build wavelet matrix     & $(b_2 - a_1) \log \sigma$             & 1 \\\hline
+\end{tabular}
+\end{center}
+
+note:
+\begin{itemize}
+\item $A$, $B$, and $C$ can be chosen.
+\item $A$ is typically 8, meaning a single byte is used to 
+maintain a non-overflowing counts in a gap array
+\item $1/B$ term is required to maintain
+  overflowing counters in a gap array. it is
+  chosen large enough to accommodate the
+  worst-case number of overflows; that is,
+  since the total counts put into the gap
+  array is $(b_2 - a_2)$, and a counter
+  overflows at $2^A - 2$\footnote{we reserve
+    $(2^A - 1)$ to indicate an overflowed
+    entry}, the overflow array must have at
+  least $(b_2 - a_2) / (2^A - 1)$ entries.
+  so in practice, assuming $A = 8$, we use $B = 128$.
+  (they are currently hardcoded).
+
+\item $1/C$ term is required to maintain a
+  prefix sum of the gap array, to quickly
+  find the place in left to insert each right
+  element into.  We do not have a luxury of
+  the full prefix array as it would need
+  $\Omega (n \log n)$ memory.  In theory,
+  we should choose $C \in \Omega (\log n)$.
+  In practice, we choose $C = 128$
+  ({\tt gap\_sum\_gran}).
+
+\end{itemize}
+
+
+\end{document}
