@@ -192,7 +192,7 @@ namespace bwt {
 
     int assert_level;
 
-    void set_defaults(alpha_t * T, idx_t n) {
+    void set_defaults(const alpha_t * T, idx_t n) {
       (void)T;			/* not used at this point */
       if (alpha_min == 0 && alpha_max == 0) {
 	alpha_min = 1;

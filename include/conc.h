@@ -17,26 +17,33 @@
 #elif TO_TBB || TO_MTHREAD_NATIVE
 #define parallel_model            parallel_model_task
 #else
-#warning "parallel_model defaults to parallel_model_none"
-#warning "consider giving -Dparallel_model=0/1/2 in the command line"
-#warning "0 : none, 1 : TBB, 2 : task"
+#warning "parallel_model not defined; set to parallel_model_none"
+#warning "consider giving -Dparallel_model=parallel_model_{none,native_tbb,task} in the command line"
 #endif
 #endif
 
 #if parallel_model == parallel_model_none
 #include <algorithm>
+#define decl_task_group int
+#define tg_run(tg, X) X
+#define tg_wait(tg)   (void)tg
+
 #elif parallel_model == parallel_model_native_tbb
 #include <tbb/task_group.h>
 #include <tbb/task_scheduler_init.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_sort.h>
 #define decl_task_group tbb::task_group
+#define tg_run(tg, X) tg.run([&] { X; })
+#define tg_wait(tg)   tg.wait()
+
 #elif parallel_model == parallel_model_task
 #include <common.h>
 #include <mtbb/task_group.h>
 #define decl_task_group mtbb::task_group
-#define tg_run(tg, X) tg.run_(X, __FILE__, __LINE__)
+#define tg_run(tg, X) tg.run_([&] { X; }, __FILE__, __LINE__)
 #define tg_wait(tg) tg.wait_(__FILE__, __LINE__)
+
 #else
 #error "define parallel_model"
 #endif
@@ -215,7 +222,8 @@ namespace bwt {
       idx_t n = (b - a) / 2;
       idx_t c = a + n;
       idx_t r = p + (4 * n) / g;
-      tg_run(tg, [&] { make_sum(x, a, c, s, p + 1, r, g); });
+      //tg_run(tg, [&] { make_sum(x, a, c, s, p + 1, r, g); });
+      tg_run(tg, make_sum(x, a, c, s, p + 1, r, g));
       make_sum(x, c, b, s, r,     q, g);
       tg_wait(tg);
       s[p] = s[p+1] + s[r];
@@ -233,7 +241,8 @@ namespace bwt {
       idx_t c = a + n;
       idx_t r = p + (4 * n) / g;
       idx_t t1 = t + s[p+1];
-      tg_run(tg, [&] { apply_sum(x, a, c, s, p + 1, r, g, t); });
+      //tg_run(tg, [&] { apply_sum(x, a, c, s, p + 1, r, g, t); });
+      tg_run(tg, apply_sum(x, a, c, s, p + 1, r, g, t));
       idx_t res =  apply_sum(x, c, b, s, r,     q, g, t1);
       tg_wait(tg);
       return res;

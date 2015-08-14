@@ -76,13 +76,11 @@ int check_result(bwt::bwt& t, bwt::alpha_t * T, bwt::idx_t n) {
   return r;
 }
 
-bwt::bwt pmbwt(bwt::alpha_t * T, bwt::alpha_t * L, bwt::idx_t n, bwt::bwt_opt& opt) {
-  bwt::alpha_t * W = bwt::new_<bwt::alpha_t>(n, "workspace to merge");
-  bwt::bwt t = bwt_rec(T, n, 0, n, L, W, opt);
-  bwt::delete_(W, n, "workspace to merge");
-  return t;
-}
-
+#if parallel_model != parallel_model_task
+#define dr_start(x) do {} while(0)
+#define dr_stop()   do {} while(0)
+#define dr_dump()   do {} while(0)
+#endif
 
 bwt::bwt stat_pmbwt(bwt::alpha_t * T, bwt::alpha_t * L, bwt::idx_t n, 
 		    bwt::bwt_opt& opt, pmbwt_opt& opt2) {
@@ -116,7 +114,7 @@ bwt::bwt stat_pmbwt(bwt::alpha_t * T, bwt::alpha_t * L, bwt::idx_t n,
   bwt::stat.start(bwt::ts_event_pmbwt);
   dr_start(0);
   bwt::tsc_t t0 = bwt::get_tsc();
-  bwt::bwt t = pmbwt(T, L, n, opt);
+  bwt::bwt t = bwt::pmbwt(T, n, L, opt);
   bwt::tsc_t t1 = bwt::get_tsc();
   dr_stop();
   bwt::stat.end(bwt::ts_event_pmbwt);
@@ -291,12 +289,6 @@ int parse_args(int argc, char ** argv, bwt::bwt_opt& opt, pmbwt_opt& opt2) {
   }
   return 1;			// OK
 }
-
-#if parallel_model != parallel_model_task
-#define dr_start(x) do {} while(0)
-#define dr_stop()   do {} while(0)
-#define dr_dump()   do {} while(0)
-#endif
 
 int main(int argc, char ** argv) {
 #if parallel_model == parallel_model_task

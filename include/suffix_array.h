@@ -12,9 +12,9 @@ namespace bwt {
 
   /* given i and j, lexicographically compare T[i] and T[j] */
   struct idx_less {
-  idx_less(alpha_t * T, idx_t n) 
+  idx_less(const alpha_t * T, idx_t n) 
   : T(T), n(n) {}
-    alpha_t * T;
+    const alpha_t * T;
     idx_t n;
   public:
     bool operator() (const idx_t& a, const idx_t& b) const {
@@ -31,7 +31,7 @@ namespace bwt {
      T[a:b] input string
      output:
      SA[0:b-a] suffix array of T[a:b] */
-  int sa_range(alpha_t * T, idx_t n, 
+  int sa_range(const alpha_t * T, idx_t n, 
 	       idx_t a, idx_t b, idx_t * SA,
 	       idx_t sort_rec_threshold=30, 
 	       idx_t merge_rec_threshold=1000) {
@@ -60,7 +60,7 @@ namespace bwt {
      l o
   */
 
-  void sa_show(alpha_t * T, idx_t n, idx_t a, idx_t b, idx_t * SA) {
+  void sa_show(const alpha_t * T, idx_t n, idx_t a, idx_t b, idx_t * SA) {
     alpha_t * C = new alpha_t[n];
     memcpy(C, T, sizeof(alpha_t) * n);
     for (idx_t i = a; i < b; i++) {

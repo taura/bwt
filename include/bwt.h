@@ -132,7 +132,7 @@ namespace bwt {
        (i) e_char: the character T[b-1] (not present in L[a:b])
        (ii) e_rank: the rank of T[b-1:]
     */
-    alpha_t * T;
+    const alpha_t * T;
     idx_t n;
     alpha_t * L;
     idx_t a;
@@ -152,7 +152,8 @@ namespace bwt {
       C = 0; 
     }
 
-    void init(alpha_t * T_, idx_t n_, alpha_t * L_, idx_t a_, idx_t b_) {
+    void init(const alpha_t * T_, idx_t n_, 
+	      alpha_t * L_, idx_t a_, idx_t b_) {
       T = T_;
       n = n_;
       L = L_;
@@ -580,7 +581,7 @@ namespace bwt {
       last suffix was stored (i.e., SA[x - a] ==
       b - 1)
   */
-  bwt sa_to_bwt(alpha_t * T, idx_t n, idx_t a, idx_t b, idx_t * SA, 
+  bwt sa_to_bwt(const alpha_t * T, idx_t n, idx_t a, idx_t b, idx_t * SA, 
 		alpha_t * L, alpha_t * W,
 		bwt_opt& opt) {
     pfor(idx_t, r, a, b, opt.sa_to_bwt_gran) {
@@ -609,7 +610,8 @@ namespace bwt {
       into L[a:b].  return the position x in L
       to which the last suffix T[b-1:] was
       written. i.e., SA[x] = b - 1 */
-  bwt bwt_leaf(alpha_t * T, idx_t n, idx_t a, idx_t b, alpha_t * L, alpha_t * W,
+  bwt bwt_leaf(const alpha_t * T, idx_t n, 
+	       idx_t a, idx_t b, alpha_t * L, alpha_t * W,
 	       bwt_opt& opt) {
     stat.start(ts_event_bwt_leaf);
     assert(a < b);
@@ -841,20 +843,27 @@ namespace bwt {
      the result goes to L[a:b]; W[a:b] is used
      as a scratch memory */
 
-  bwt bwt_rec(alpha_t * T, idx_t n, idx_t a, idx_t b, 
+  bwt bwt_rec(const alpha_t * T, idx_t n, idx_t a, idx_t b, 
 	      alpha_t * L, alpha_t * W,
 	      bwt_opt& opt) {
     if (b - a <= opt.bwt_rec_threshold) {
       return bwt_leaf(T, n, a, b, L, W, opt);
     } else {
       idx_t c = (a + b) / 2;
-      bwt l;
+      bwt l = bwt_rec(T, n, a, c, L, W, opt);
       decl_task_group tg;
-      tg.run([&] { l = bwt_rec(T, n, a, c, L, W, opt); });
+      tg_run(tg, l = bwt_rec(T, n, a, c, L, W, opt));
       bwt r = bwt_rec(T, n, c, b, L, W, opt);
-      tg.wait();
+      tg_wait(tg);
       return bwt_merge(l, r, W, opt);
     }
+  }
+
+  bwt pmbwt(const alpha_t * T, idx_t n, alpha_t * L, bwt_opt& opt) {
+    alpha_t * W = new_<alpha_t>(n, "workspace to merge");
+    bwt t = bwt_rec(T, n, 0, n, L, W, opt);
+    delete_(W, n, "workspace to merge");
+    return t;
   }
 
   int check_equal(alpha_t * T, alpha_t * I, idx_t a, idx_t b) {

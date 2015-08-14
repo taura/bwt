@@ -15,7 +15,7 @@ libs+=-ltbb -ltbbmalloc
 #CXXFLAGS:=$(opts) -O3
 CXXFLAGS:=$(opts) -O0 -gdwarf-4
 
-apps:=pmbwt
+apps:=simplest pmbwt
 
 all : $(apps)
 
