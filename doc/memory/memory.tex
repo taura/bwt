@@ -35,7 +35,7 @@ The flow of the algorithm for building BWT for range $[a,b)$ is:
                                     & bits                  & lifetime \\\hline
 build suffix array                  & $(b - a) \log n$      & 0 \\
 build BWT based on the suffix array & $(b - a) \log \sigma$ & 2 \\
-sample the suffix array             & $S \log n$            & 1 \\
+sample the suffix array             & $2S \log n$           & 1 \\
 build character occurrence array    & $\sigma \log n$       & 1 \\
 build wavelet matrix                & $(b - a) \log \sigma$ & 1 \\\hline
 \end{tabular}
@@ -73,12 +73,15 @@ The overall structure of merge is this.
 build gap array          & $(b_1 - a_1 + 1) (A + (1/B + 1/C) \log n)$ & 0 \\
 sort right samples       & $S \log n$                         & 0 \\
 scan the right BWT to fill the gap array & -                      & - \\
-prefix sum the gap array & -                                      & - \\
-build BWT based on the suffix array (output) & $(b_2 - a_1) \log \sigma$ & 0 \\
+prefix sum the gap array & $((b_2 - a_1) / G) \log n$                      & 0 \\
+build BWT based on the suffix array (workspace) & $(b_2 - a_1) \log \sigma$ & 0 \\
 build BWT based on the suffix array (result) & $(b_2 - a_1) \log \sigma$ & 2 \\
-resample sampled arrays  & $S \log n$                             & 1 \\
+resample sampled arrays  & $2S \log n$                             & 1 \\
 build character occurrence array & $\sigma \log n$              & 1 \\
-build wavelet matrix     & $(b_2 - a_1) \log \sigma$             & 1 \\\hline
+build wavelet matrix     & $(b_2 - a_1) \log \sigma$             & 1 \\
+array of succinct bit vectors & & \\
+succinct bit vectors     &  & \\
+partition by bit         &  & \\
 \end{tabular}
 \end{center}
 

@@ -249,7 +249,8 @@ namespace bwt {
 
 #endif
 
-  idx_t prefix_sum(idx_t * x, idx_t a, idx_t b, idx_t gran) {
+  idx_t prefix_sum(idx_t * x, idx_t a, idx_t b, idx_t gran,
+		   mallocator& mem, mem_reason_kind_t reason) {
 #if parallel_model == parallel_model_none
     (void)gran;
     return serial_prefix_sum(x, a, b, 0);
@@ -258,10 +259,10 @@ namespace bwt {
        there are cases make_sum is useless */
     idx_t m = max((4 * (b - a)) / gran - 1, 1);
     /* receive s rather than allocate */
-    idx_t * s = new_<idx_t>(m, "temporary array to make prefix sum");
+    idx_t * s = mem.new_<idx_t>(m, reason);
     make_sum(x, a, b, s, 0, m, gran);
     idx_t r =  apply_sum(x, a, b, s, 0, m, gran, 0);
-    delete_(s, m, "temporary array to make prefix sum");
+    mem.delete_(s, m, reason);
     return r;
 #endif
   }
@@ -271,6 +272,7 @@ namespace bwt {
 
   template<typename T, typename Compare>
     void psort(T * a_beg, T * a_end, const Compare& lt,
+	       mallocator& mem, mem_reason_kind_t reason,
 	       idx_t sort_rec_threshold, idx_t merge_rec_threshold) {
 #if parallel_model == parallel_model_none
     (void)sort_rec_threshold;
@@ -281,7 +283,7 @@ namespace bwt {
     (void)merge_rec_threshold;
     tbb::parallel_sort(a_beg, a_end, lt);
 #elif parallel_model == parallel_model_task
-    task_parallel_sort(a_beg, a_end, lt, 
+    task_parallel_sort(a_beg, a_end, lt, mem, reason,
 		       sort_rec_threshold, merge_rec_threshold);
 #else
 

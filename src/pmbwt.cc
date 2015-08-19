@@ -15,6 +15,7 @@ struct pmbwt_opt {
     stat_level = 0;
     mstat_level = 0;
     n_workers = 1;
+    check = 1;
     repeat = 1;
     help = 0;
   }
@@ -25,6 +26,7 @@ struct pmbwt_opt {
   int stat_level;
   int mstat_level;
   int n_workers;
+  int check;
   int repeat;
   int help;
 };
@@ -59,9 +61,11 @@ int check_equal(bwt::alpha_t * T, bwt::alpha_t * I,
   return 1;			/* OK */
 }
 
-int check_result(bwt::bwt& t, bwt::alpha_t * T, bwt::idx_t n) {
+int check_result(bwt::bwt& t, bwt::alpha_t * T, bwt::idx_t n,
+		 bwt::mallocator& mem, bwt::bwt_opt& opt) {
   /* space to get the original string back from bwt */
   bwt::alpha_t * I = new bwt::alpha_t[n];
+  t.init_extra(I, mem, opt);
   unsigned short rg[3] = { 918, 729, 723 };
   random_init(I, n, rg);
   printf("checking result ... "); fflush(stdout);
@@ -83,6 +87,7 @@ int check_result(bwt::bwt& t, bwt::alpha_t * T, bwt::idx_t n) {
 #endif
 
 bwt::bwt stat_pmbwt(bwt::alpha_t * T, bwt::alpha_t * L, bwt::idx_t n, 
+		    bwt::mallocator& mem,
 		    bwt::bwt_opt& opt, pmbwt_opt& opt2) {
 
   printf("building bwt of %ld characters\n", n);
@@ -107,20 +112,9 @@ bwt::bwt stat_pmbwt(bwt::alpha_t * T, bwt::alpha_t * L, bwt::idx_t n,
   printf(" assert_level = %d\n", opt.assert_level);
   printf(" seed = %ld\n", opt2.seed);
 
-  bwt::stat.reset();
-  bwt::stat.level = opt2.stat_level;
-  bwt::mstat.reset();
-  bwt::mstat.level = opt2.mstat_level;
-  bwt::stat.start(bwt::ts_event_pmbwt);
   dr_start(0);
-  bwt::tsc_t t0 = bwt::get_tsc();
-  bwt::bwt t = bwt::pmbwt(T, n, L, opt);
-  bwt::tsc_t t1 = bwt::get_tsc();
+  bwt::bwt t = bwt::pmbwt(T, n, L, opt2.stat_level, mem, opt);
   dr_stop();
-  bwt::stat.end(bwt::ts_event_pmbwt);
-  printf("%llu clocks to build bwt for %ld chars\n", t1 - t0, n);
-  bwt::stat.print();
-  bwt::mstat.print();
   return t;
 }
 
@@ -130,6 +124,7 @@ enum {
   opt_alpha_max,
   opt_stat_level,
   opt_mstat_level,
+  opt_check,
   opt_repeat,
   opt_ssa_n_samples,
   opt_sort_rec_threshold,
@@ -152,10 +147,12 @@ enum {
 
 struct option long_options[] = {
   {"n_workers",                 required_argument, 0, 'w' },
+  {"mem_budget",                required_argument, 0, 'm' },
   {"alpha_min",                 required_argument, 0, opt_alpha_min },
   {"alpha_max",                 required_argument, 0, opt_alpha_max },
   {"stat_level",                required_argument, 0, opt_stat_level },
   {"mstat_level",               required_argument, 0, opt_mstat_level },
+  {"check",                     required_argument, 0, opt_check },
   {"repeat",                    required_argument, 0, 'r' },
   {"ssa_n_samples",             required_argument, 0, opt_ssa_n_samples },
   {"sort_rec_threshold",        required_argument, 0, opt_sort_rec_threshold },
@@ -207,9 +204,12 @@ int parse_args(int argc, char ** argv, bwt::bwt_opt& opt, pmbwt_opt& opt2) {
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "hw:t:r:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "hw:m:t:r:", long_options, &option_index);
     if (c == -1) break;
     switch (c) {
+    case 'm':
+      opt.mem_budget = atof(optarg);
+      break;
     case opt_alpha_min:
       opt2.alpha_min = optarg[0];
       break;
@@ -221,6 +221,9 @@ int parse_args(int argc, char ** argv, bwt::bwt_opt& opt, pmbwt_opt& opt2) {
       break;
     case opt_mstat_level:
       opt2.mstat_level = atoi(optarg);
+      break;
+    case opt_check:
+      opt2.check = atoi(optarg);
       break;
     case 'r':
       opt2.repeat = atoi(optarg);
@@ -309,18 +312,24 @@ int main(int argc, char ** argv) {
   bwt::idx_t n = opt2.n_chars;
   bwt::alpha_t * T = gen_input(n, opt2.alpha_min, opt2.alpha_max, opt2.seed);
   bwt::alpha_t * L = new bwt::alpha_t[n];
-
   opt.set_defaults(T, n);
 
+  bwt::mallocator mem(n, opt);
+  mem.level = opt2.mstat_level;
   int r = 1;
   for (int repeat = 0; repeat < opt2.repeat; repeat++) {
     printf("==== repeat %d ====\n", repeat);
-    bwt::bwt t = stat_pmbwt(T, L, n, opt, opt2);
-    r = check_result(t, T, n);
-    t.fini(opt);
+    bwt::bwt t = stat_pmbwt(T, L, n, mem, opt, opt2);
+    if (opt2.check) {
+      r = check_result(t, T, n, mem, opt);
+    } else {
+      printf("result not checked\n");
+    }
+    t.fini(mem, opt);
     if (!r) break;
   }
   if (r) dr_dump();
+  mem.print();
 
   delete[] T;
   delete[] L;

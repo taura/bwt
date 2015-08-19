@@ -33,14 +33,18 @@ namespace bwt {
      SA[0:b-a] suffix array of T[a:b] */
   int sa_range(const alpha_t * T, idx_t n, 
 	       idx_t a, idx_t b, idx_t * SA,
+	       mallocator& mem, 
 	       idx_t sort_rec_threshold=30, 
-	       idx_t merge_rec_threshold=1000) {
+	       idx_t merge_rec_threshold=1000,
+	       idx_t sa_init_gran=10000) {
     idx_less lt(T, n);
-    for (idx_t i = a; i < b; i++) {
+    pfor(idx_t, i, a, b, sa_init_gran) {
       SA[i] = i;
-    }
+    } end_pfor;
     /* parallel sort? */
-    psort(SA + a, SA + b, lt, sort_rec_threshold, merge_rec_threshold);
+    psort(SA + a, SA + b, lt, 
+	  mem, mem_reason_sort_leaf_sa,
+	  sort_rec_threshold, merge_rec_threshold);
     return 1;
   }
 

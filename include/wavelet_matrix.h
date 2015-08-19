@@ -70,6 +70,7 @@ namespace bwt {
 
   private:
     void partition_by_bit(alpha_t * t, alpha_t * u, int l,
+			  idx_t (*bit_counts)[2], idx_t n_segments,
 			  idx_t sum_interval=10000,
 			  idx_t add_zero_count_gran=10000) {
       int shift = alpha_width - l - 1;
@@ -87,30 +88,27 @@ namespace bwt {
 	 - we count 0/1 in each segment
 	 - we calc the prefix sum of the two count arrays
       */
-      idx_t ns = (n + sum_interval - 1) / sum_interval;
-      idx_t (*offsets)[2] = (idx_t (*)[2])new_<idx_t>(ns * 2, "wavelet_matrix prefix sum array");
-
       /* count 0/1 in each segment of sum_interval characters */
       /* parallel (doall) */
       // for(idx_t si = 0l; si < ns; si++)
-      pfor(idx_t, si, (idx_t)0, ns, (idx_t)1) {
-	idx_t * counts = offsets[si];
-	counts[0] = counts[1] = 0;
+      pfor(idx_t, si, (idx_t)0, n_segments, (idx_t)1) {
+	idx_t * bc = bit_counts[si];
+	bc[0] = bc[1] = 0;
 	idx_t ii = si * sum_interval; 
 	for (idx_t i = ii; i < min(ii + sum_interval, n); i++) {
 	  idx_t bit = ((t[i] >> shift) & 1);
-	  counts[bit]++;
+	  bc[bit]++;
 	}
       } end_pfor;
       /* take prefix sum */
       idx_t acc[2] = { 0, 0 };
       /* parallel (prefix sum) */
-      for (idx_t si = 0; si < ns; si++) {
-	idx_t * counts = offsets[si];
-	idx_t t[2] = { counts[0], counts[1] };  /* tmp */
+      for (idx_t si = 0; si < n_segments; si++) {
+	idx_t * bc = bit_counts[si];
+	idx_t t[2] = { bc[0], bc[1] };  /* tmp */
 	/* set prefix sum */
-	counts[0] = acc[0]; 
-	counts[1] = acc[1];
+	bc[0] = acc[0]; 
+	bc[1] = acc[1];
 	/* accumulate counts */
 	acc[0] += t[0]; 
 	acc[1] += t[1];
@@ -124,8 +122,8 @@ namespace bwt {
 	 to make them offset */
       /* parallel (doall) */
       // for(idx_t si = 0l; si < ns; si++)
-      pfor(idx_t, si, (idx_t)0, ns, add_zero_count_gran) {
-	offsets[si][1] += acc[0];
+      pfor(idx_t, si, (idx_t)0, n_segments, add_zero_count_gran) {
+	bit_counts[si][1] += acc[0];
       } end_pfor;
       /* now offsets[x][0] is the index that
 	 the first zero in the segment x 
@@ -134,8 +132,8 @@ namespace bwt {
 	 should go */
       /* parallel (doall) */
       // for(idx_t si = 0l; si < ns; si++)
-      pfor(idx_t, si, (idx_t)0, ns, (idx_t)1) {
-	idx_t * offs = offsets[si];
+      pfor(idx_t, si, (idx_t)0, n_segments, (idx_t)1) {
+	idx_t * offs = bit_counts[si];
 	idx_t ii = si * sum_interval; 
 	for (idx_t i = ii; i < min(ii + sum_interval, n); i++) {
 	  alpha_t b = (t[i] >> shift) & 1;
@@ -146,7 +144,6 @@ namespace bwt {
 	  offs[b] = d + 1;
 	}
       } end_pfor;
-      delete_((idx_t *)offsets, ns * 2, "wavelet_matrix prefix sum array");
     }
 
     /* input t : array of n characters; the l-th bit
@@ -176,7 +173,9 @@ namespace bwt {
        it into alpha_width bit sequences */
 
     void transpose_bits(alpha_t * t, alpha_t * u,
-			idx_t gran=10000) {
+			mallocator& mem,
+			idx_t gran=10000,
+			idx_t prefix_sum_gran=1000) {
       /* TODO: remove too many single byte writes */
       pfor(idx_t, i, (idx_t)0, n, gran) {
 	alpha_t c = t[i];
@@ -187,25 +186,8 @@ namespace bwt {
 	}
       } end_pfor;
       pfor(int, l, 0, alpha_width, 1) {
-	bit_vectors[l].init((uint8_t *)u, l * n, (l + 1) * n);
+	bit_vectors[l].init((uint8_t *)u, l * n, (l + 1) * n, mem, prefix_sum_gran);
       } end_pfor;
-    }
-
-    /* the number of bits necessary to represent x
-       x = 7 (0x111 ) -> 3 
-       x = 8 (0x1000) -> 4
-       it is l s.t. 2^(l-1) <= x < 2^l */
-    int int_log2(alpha_t x_) {
-      int l = 0;
-      idx_t x = x_;
-      idx_t y = 1;
-      while (y <= x) {
-	l++;
-	y += y;
-      }
-      assert(x <  (1U << l));
-      assert(x >= (1U << (l - 1)));
-      return l;
     }
 
   public:
@@ -214,20 +196,26 @@ namespace bwt {
        assuming each character x is alpha0 <= x <= alpha1
        (note alpha1 is included) */
     void init(alpha_t * s_, idx_t n_, alpha_t * w,
+	      mallocator& mem,
 	      alpha_t alpha0_=0, 
 	      alpha_t alpha1_=255,
 	      idx_t sum_interval=10000,
 	      idx_t add_zero_count_gran=10000,
 	      size_t memcpy_gran=10000,
-	      idx_t transpose_gran=10000) {
+	      idx_t transpose_gran=10000,
+	      idx_t prefix_sum_gran=1000) {
       s = s_;
       n = n_;
       alpha0 = alpha0_;
       alpha1 = alpha1_;
-      alpha_width = int_log2(alpha1);
-      bit_vectors = new_<succinct_bit_vector>(alpha_width, "wavelet matrix bitvector array");
-      bitmaps = new_<alpha_t>(n, "wavelet matrix bitmap array");
-    
+      alpha_width = int_log2(alpha1_);
+      bit_vectors = mem.new_<succinct_bit_vector>(alpha_width, 
+						  mem_reason_wavelet_matrix_bitvec_array);
+      bitmaps = mem.new_<alpha_t>(n, mem_reason_wavelet_matrix_bitmaps);
+      idx_t n_segments = (n + sum_interval - 1) / sum_interval;
+      idx_t * bit_counts_ = mem.new_<idx_t>(n_segments * 2, 
+					    mem_reason_wavelet_matrix_count_bits);
+      idx_t (*bit_counts)[2] = (idx_t (*)[2])bit_counts_;
       assert(alpha_width > 0);
       assert(alpha_width <= 8);
       /* alternately use two arrays to sort them */
@@ -242,21 +230,25 @@ namespace bwt {
 	   destination array. the first l bits in each 
 	   char do not move */
 	partition_by_bit(t[l % 2], t[(l + 1) % 2], l, 
-			 sum_interval, add_zero_count_gran);
+			 bit_counts, n_segments, sum_interval, add_zero_count_gran);
       }
       assert(bitmaps == t[(alpha_width + 1) % 2]);
-      transpose_bits(t[alpha_width % 2], bitmaps, transpose_gran);
+      transpose_bits(t[alpha_width % 2], bitmaps, mem, transpose_gran, prefix_sum_gran);
       assert(w == t[alpha_width % 2]);
+
+      mem.delete_((idx_t *)bit_counts_, n_segments * 2, 
+		  mem_reason_wavelet_matrix_count_bits);
     }
 
-    void fini() {
+    void fini(mallocator& mem) {
       if (bit_vectors) {
 	assert(bitmaps);
 	for (int l = 0; l < alpha_width; l++) {
-	  bit_vectors[l].fini();
+	  bit_vectors[l].fini(mem);
 	}
-	delete_(bit_vectors, alpha_width, "wavelet matrix bitvector array");
-	delete_(bitmaps, n, "workspace to build wavelet matrix 1");
+	mem.delete_(bit_vectors, alpha_width, 
+		    mem_reason_wavelet_matrix_bitvec_array);
+	mem.delete_(bitmaps, n, mem_reason_wavelet_matrix_bitmaps);
       } else {
 	assert(!bitmaps);
       }

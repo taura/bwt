@@ -1,11 +1,14 @@
 #pragma once
 
+#include <stdio.h>
+
 #include "typedefs.h"
 
 namespace bwt {
 
   struct bwt_opt {
     bwt_opt() {
+      mem_budget = 0;
       alpha_min = 0;
       alpha_max = 0;
       ssa_n_samples = 0;
@@ -18,15 +21,19 @@ namespace bwt {
       memcpy_gran = 0;
       gap_init_gran = 0;
       ssa_init_gran = 0;
+      sa_init_gran = 0;
       ssa_sample_gran = 0;
       gap_sum_gran = 0;
       sa_to_bwt_gran = 0;
       wavelet_matrix_sum_interval = 0;
       wavelet_matrix_add_zero_count_gran = 0;
       wavelet_matrix_transpose_gran = 0;
+      prefix_sum_gran = 0;
       n_approx_workers = 0;
       assert_level = 0;
     }
+
+    double mem_budget;
 
     /* minimum alphet. if 0, calculated from the input string */
     alpha_t alpha_min;
@@ -161,9 +168,11 @@ namespace bwt {
     idx_t memcpy_gran;
     idx_t gap_init_gran;
     idx_t ssa_init_gran;
+    idx_t sa_init_gran;
     idx_t ssa_sample_gran;
     idx_t wavelet_matrix_add_zero_count_gran;
     idx_t wavelet_matrix_transpose_gran;
+    idx_t prefix_sum_gran;
 
     /* 
        the number of workers you use, or 0 if
@@ -192,14 +201,18 @@ namespace bwt {
 
     int assert_level;
 
+    idx_t max_num_ssa(idx_t n, idx_t th) {
+      if (n <= th) return 0;
+      else {
+	return 1 + max_num_ssa(n - n / 2, th);
+      }
+    }
+
     void set_defaults(const alpha_t * T, idx_t n) {
       (void)T;			/* not used at this point */
       if (alpha_min == 0 && alpha_max == 0) {
 	alpha_min = 1;
 	alpha_max = 255;
-      }
-      if (ssa_n_samples == 0) {
-	ssa_n_samples = n * sizeof(alpha_t) / (sizeof(idx_t) * 8) + 2;
       }
       if (n_approx_workers == 0) {
 	n_approx_workers = 256;
@@ -209,9 +222,6 @@ namespace bwt {
       }
       if (merge_rec_threshold == 0) {
 	merge_rec_threshold = 10000;
-      }
-      if (bwt_rec_threshold == 0) {
-	bwt_rec_threshold = 1024;
       }
       if (build_gap_segment_sz == 0) {
 	build_gap_segment_sz = 1024;
@@ -240,6 +250,9 @@ namespace bwt {
       if (ssa_init_gran == 0) {
 	ssa_init_gran = 10000;
       }
+      if (sa_init_gran == 0) {
+	sa_init_gran = 10000;
+      }
       if (ssa_sample_gran == 0) {
 	ssa_sample_gran = 10000;
       }
@@ -248,6 +261,29 @@ namespace bwt {
       }
       if (wavelet_matrix_transpose_gran == 0) {
 	wavelet_matrix_transpose_gran = 10000;
+      }
+      if (prefix_sum_gran == 0) {
+	prefix_sum_gran = 1000;
+      }
+      if (mem_budget == 0) {
+	mem_budget = 4.0;
+      }
+      if (mem_budget < 2.5) {
+	printf("warning: mem_budget %f too small. defaults to 4.0\n", mem_budget);
+	mem_budget = 4.0;
+      }
+      if (mem_budget >= 2 + sizeof(idx_t) * 2) {
+	bwt_rec_threshold = n;
+	ssa_n_samples = 2;	/* should not matter */
+      } else {
+	/* allocate 80% of the remaining budget to leaf suffix array and its sorting */
+	double p = 0.8;
+	bwt_rec_threshold = ((mem_budget - 2) * p * n) / (sizeof(idx_t) * 2);
+	bwt_rec_threshold = max(1000, bwt_rec_threshold);
+	idx_t ssa_total_bytes = (mem_budget - 2) * (1 - p) * n;
+	idx_t ssa_bytes = ssa_total_bytes / (1 + max_num_ssa(n, bwt_rec_threshold));
+	ssa_n_samples = ssa_bytes / (sizeof(idx_t) * 2);
+	ssa_n_samples = max(1000, ssa_n_samples);
       }
     }
 

@@ -131,13 +131,14 @@ namespace bwt {
 
   template<typename T, typename Compare>
     void task_parallel_sort(T * a_beg, T * a_end, const Compare& lt, 
+			    mallocator& mem, mem_reason_kind_t reason,
 			    idx_t sort_rec_threshold=30, 
 			    idx_t merge_rec_threshold=1000) {
     idx_t n = a_end - a_beg;
-    T * t_beg = new_<T>(n, "workspace for parallel sort");
+    T * t_beg = mem.new_<T>(n, reason);
     sort_range(a_beg, a_end, t_beg, lt, 0,
 	       sort_rec_threshold, merge_rec_threshold);
-    delete_(t_beg, n, "workspace for parallel sort");
+    mem.delete_(t_beg, n, reason);
   }
 
 #endif

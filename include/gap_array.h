@@ -30,6 +30,7 @@ namespace bwt {
 
     /* gap_array for [a:b+1] */
     void init(idx_t a_, idx_t b_, 
+	      mallocator& mem,
 	      idx_t sum_interval_=128, 
 	      idx_t init_gran=10000) {
       stat.start(ts_event_gap_array_init);
@@ -40,9 +41,9 @@ namespace bwt {
       ps_a = a / sum_interval;
       ps_b = b / sum_interval;
 
-      small = new_<uint8_t>(b - a + 1, "gap small") - a;
-      overflow = new_<overflow_entry>(m, "gap overflow");
-      ps = new_<idx_t>(ps_b - ps_a + 1, "gap prefix sum") - ps_a;
+      small = mem.new_<uint8_t>(b - a + 1, mem_reason_gap_small) - a;
+      overflow = mem.new_<overflow_entry>(m, mem_reason_gap_overflow);
+      ps = mem.new_<idx_t>(ps_b - ps_a + 1, mem_reason_gap_prefix_sum) - ps_a;
 
       /* parallel (doall) */
       // for(idx_t i = a; i < b + 1; i++)
@@ -55,18 +56,14 @@ namespace bwt {
 	overflow[i].i = -1;
 	overflow[i].c = -1;
       } end_pfor;
-#if 0
-      ps = 0;
-      ps_a = ps_b = 0;
-#endif
       stat.end(ts_event_gap_array_init);
     }
 
-    void fini() {
+    void fini(mallocator& mem) {
       stat.start(ts_event_gap_array_fini);
-      delete_(small + a, b - a + 1, "gap small");
-      delete_(overflow, m, "gap overflow");
-      delete_(ps + ps_a, ps_b - ps_a + 1, "gap prefix sum");
+      mem.delete_(small + a, b - a + 1, mem_reason_gap_small);
+      mem.delete_(overflow, m, mem_reason_gap_overflow);
+      mem.delete_(ps + ps_a, ps_b - ps_a + 1, mem_reason_gap_prefix_sum);
       stat.end(ts_event_gap_array_fini);
     }
 
@@ -281,16 +278,11 @@ namespace bwt {
     }
 
     /* set prefix sum */
-    void set_prefix_sum() {
+    void set_prefix_sum(mallocator& mem, idx_t prefix_sum_gran) {
       stat.start(ts_event_gap_array_set_prefix_sum);
       /* we like to set 
 	 ps[k] = get(a) + ... + get(g*k - 1)
 	 (g = sum_gran) */
-#if 0
-      ps_a = a / sum_interval;
-      ps_b = b / sum_interval;
-      ps = new_<idx_t>(ps_b - ps_a + 1, "gap prefix sum") - ps_a;
-#endif
       /* parallel (doall) */
       // for(idx_t k = ps_a; k < ps_b + 1; k++)
       pfor(idx_t, k, ps_a, ps_b + 1, (idx_t)1) {
@@ -305,7 +297,8 @@ namespace bwt {
 	ps[k] = s;
       } end_pfor;
       /* parallel (prefix sum) */
-      prefix_sum(ps, ps_a, ps_b + 1, 1000);
+      prefix_sum(ps, ps_a, ps_b + 1, prefix_sum_gran, 
+		 mem, mem_reason_gap_prefix_sum_temp);
       stat.end(ts_event_gap_array_set_prefix_sum);
     }
 

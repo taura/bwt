@@ -22,13 +22,6 @@ namespace bwt {
 
   */
 
-  enum {
-    x_superblock_bits = (1 << 15),
-    x_block_bits      = (1 << 9),
-    superblock_bits = (1 << 15),
-    block_bits      = (1 << 6),
-  };
-
   struct succinct_bit_vector {
 
   private:
@@ -36,8 +29,8 @@ namespace bwt {
     idx_t begin;			/* bits + begin ... bits + end - 1 */
     idx_t end;
     idx_t n_superblocks;
-    idx_t    * superblocks;
     idx_t n_blocks;
+    idx_t    * superblocks;
     uint16_t * blocks;
 
   public:
@@ -197,7 +190,9 @@ namespace bwt {
     }
 
   public:
-    void init(uint8_t * bits_, idx_t begin_, idx_t end_) {
+    void init(uint8_t * bits_, idx_t begin_, idx_t end_,
+	      mallocator& mem,
+	      idx_t prefix_sum_gran=1000) {
       /* we don't like a block not aligned to 
 	 64 bit word boundaries ... */
       assert(block_bits % 64 == 0);
@@ -218,8 +213,9 @@ namespace bwt {
       idx_t n_blocks_per_superblock = superblock_bits / block_bits;
       n_superblocks = ns;
       n_blocks      = nb;
-      superblocks = new_<idx_t>(ns, "succinct bit superblock");
-      blocks      = new_<uint16_t>(nb, "succinct bit block");
+      //size_t sb_sz = ns * sizeof(idx_t);
+      superblocks = mem.new_<idx_t>(ns, mem_reason_succinct_bitvec_superblock);
+      blocks      = mem.new_<uint16_t>(nb, mem_reason_succinct_bitvec_block);
       /* the first pass. count ones in each superblock
 	 and each block. then we make the block counts
 	 a prefix sum within each superblock */
@@ -247,16 +243,21 @@ namespace bwt {
       } end_pfor;
       /* the second path to get the prefix sum */
       /* parallel (prefix sum) */
-      prefix_sum(superblocks, 0, ns, 1000);
+      prefix_sum(superblocks, 0, ns, prefix_sum_gran,
+		 mem, mem_reason_succinct_bitvec_prefix_sum_temp);
       /* remember number of zeros for wavelet matrix */
       n_zeros = rank0(n);
     }
 
-    void fini() {
-      if (superblocks) 
-	delete_(superblocks, n_superblocks, "succinct bit superblock");
-      if (blocks) 
-	delete_(blocks, n_blocks, "succinct bit block");
+    void fini(mallocator& mem) {
+      if (superblocks) {
+	mem.delete_(superblocks, n_superblocks, 
+		    mem_reason_succinct_bitvec_superblock);
+      }
+      if (blocks) {
+	mem.delete_(blocks, n_blocks, 
+		    mem_reason_succinct_bitvec_block);
+      }
     }
 
     /* the number of bits in a[0:n] */

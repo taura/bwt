@@ -80,18 +80,13 @@ namespace bwt {
     ssa_entry * begin;		/* first entry after sort having ->pos != -1 */
     ssa_entry * end;		/* first entry after sort having ->pos != -1 */
 
-    void init(idx_t sz_req, idx_t init_gran=10000) {
+    void init(idx_t sz_req, mallocator& mem, idx_t init_gran=10000) {
       n = 0;
       /* get a minimum power of two > sz_req */
-      sz = 1;
-      log_sz = 0;
-      while (sz < sz_req) {
-	sz *= 2;
-	log_sz++;
-      }
-      sz = sz * 2;
+      log_sz = calc_log_sample_sa_sz(sz_req);
+      sz = (1 << (log_sz + 1));
       /* allocate the array */
-      a = new_<ssa_entry>(sz, "sampled sa");
+      a = mem.new_<ssa_entry>(sz, mem_reason_sample_sa);
       /* parallel (doall) */
       // for(idx_t i = 0l; i < sz; i++) 
       pfor(idx_t, i, (idx_t)0, sz, init_gran) {
@@ -100,17 +95,21 @@ namespace bwt {
       begin = 0;
       end = a + sz;
     }
-    void fini() {
-      if (a) delete_(a, sz, "sampled sa");
+    void fini(mallocator& mem) {
+      if (a) {
+	mem.delete_(a, sz, mem_reason_sample_sa);
+      }
     }
 
-    void sort_by_pos(idx_t sort_rec_threshold=30,
+    void sort_by_pos(mallocator& mem, 
+		     idx_t sort_rec_threshold=30,
 		     idx_t merge_rec_threshold=1000) {
       assert(begin == 0);
       stat.start(ts_event_ssa_sort_by_pos);
       ssa_pos_lt lt;
       /* parallel sort */
-      psort(a, a + sz, lt, sort_rec_threshold, merge_rec_threshold);
+      psort(a, a + sz, lt, mem, mem_reason_sort_sample_sa,
+	    sort_rec_threshold, merge_rec_threshold);
       /* find first non -1 entry.
 	 TODO: use binary search */
       ssa_entry * p;
@@ -134,9 +133,9 @@ namespace bwt {
       return ssa_reverse_iterator(c, begin);
     }
 
-    ssa_iterator pos_begin() {
+    ssa_iterator pos_begin(mallocator& mem) {
       if (begin == 0) {
-	sort_by_pos();
+	sort_by_pos(mem);
       }
       return ssa_iterator(begin, end);
     }

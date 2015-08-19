@@ -166,16 +166,18 @@ namespace bwt {
       C = 0;
     }
 
-    void init_extra(alpha_t * W, bwt_opt& opt) {
-      count_alphabets(opt);
-      build_wavelet_matrix(W, opt);
+    void init_extra(alpha_t * W, mallocator& mem, bwt_opt& opt) {
+      count_alphabets(mem, opt);
+      build_wavelet_matrix(W, mem, opt);
     }
 
-    void fini(bwt_opt& opt) {
+    void fini(mallocator& mem, bwt_opt& opt) {
       stat.start(ts_event_bwt_fini);
-      wm.fini();
-      ssa.fini();
-      if (C) delete_(C, opt.alpha_max + 1, "count");
+      wm.fini(mem);
+      ssa.fini(mem);
+      if (C) {
+	mem.delete_(C, opt.alpha_max + 1, mem_reason_count_alphabets);
+      }
       stat.end(ts_event_bwt_fini);
     }
   
@@ -195,11 +197,11 @@ namespace bwt {
        is not in L[a:b], so it was explicitly
        saved in e_char. */
 
-    void count_alphabets(bwt_opt& opt) {
+    void count_alphabets(mallocator& mem, bwt_opt& opt) {
       stat.start(ts_event_bwt_count_alphabets);
       assert(C == 0);
       /* memory allocation: can use a fixed address */
-      C = new_<idx_t>(opt.alpha_max + 1, "count");
+      C = mem.new_<idx_t>(opt.alpha_max + 1, mem_reason_count_alphabets);
       for (idx_t c = 0; c <= opt.alpha_max; c++) {
 	C[c] = 0;
       }
@@ -226,7 +228,7 @@ namespace bwt {
     /* build wavelet matrix of L[a:b], excluding
        T[a-1] that should not be counted upon
        LF-mapping */
-    void build_wavelet_matrix(alpha_t * W, bwt_opt& opt) {
+    void build_wavelet_matrix(alpha_t * W, mallocator& mem, bwt_opt& opt) {
       stat.start(ts_event_bwt_build_wavelet_matrix);
       /* assert wm has not been initialized before */
       alpha_t t = L[s_rank];
@@ -234,12 +236,14 @@ namespace bwt {
       L[s_rank] = 0;		
       /* build wavelet matrix */
       wm.init(L + a, b - a, W + a,
+	      mem,
 	      opt.alpha_min, 
 	      opt.alpha_max, 
 	      opt.wavelet_matrix_sum_interval, 
 	      opt.wavelet_matrix_add_zero_count_gran,
 	      opt.memcpy_gran,
-	      opt.wavelet_matrix_transpose_gran);
+	      opt.wavelet_matrix_transpose_gran,
+	      opt.prefix_sum_gran);
       /* get T[a-1] back in place */
       L[s_rank] = t;
       stat.end(ts_event_bwt_build_wavelet_matrix);
@@ -287,7 +291,7 @@ namespace bwt {
        give high priorities to x's of which 
        (x - a) / d is close to an integer
     */
-    int sample_sa(idx_t * sa, idx_t ns, bwt_opt& opt) {
+    int sample_sa(idx_t * sa, idx_t ns, mallocator& mem, bwt_opt& opt) {
     
       /* we put ns samples between
 	 [a,b), (the range covered by t),
@@ -313,7 +317,7 @@ namespace bwt {
       */
       stat.start(ts_event_bwt_sample_sa);
       assert(ns >= 2 || b - a == 1); /* for a and b - 1 */
-      ssa.init(ns, opt.ssa_init_gran);
+      ssa.init(ns, mem, opt.ssa_init_gran);
       /* parallel for (doall) */
       pfor(idx_t, r, a, b, opt.ssa_sample_gran) {
 	/* T[i:]'s rank is r */
@@ -363,9 +367,10 @@ namespace bwt {
 		    idx_t c, /* l.b = r.a */
 		    idx_t ns, 
 		    gap_array& gap,
+		    mallocator& mem,
 		    bwt_opt& opt) {
       stat.start(ts_event_bwt_resample_sa);
-      ssa.init(ns, opt.ssa_init_gran);
+      ssa.init(ns, mem, opt.ssa_init_gran);
 
       /* we are going to choose ns samples,
 	 out of ns0 samples. in the first i 
@@ -387,7 +392,7 @@ namespace bwt {
 
       /* calculate new ranks of left suffixes */
       /* paralle for */
-      for (ssa_iterator it = l.pos_begin(); it.has_next(); it.next()) {
+      for (ssa_iterator it = l.pos_begin(mem); it.has_next(); it.next()) {
 	/* s is an arbitrary sample in left */
 	idx_t rank = it.e->rank, pos = it.e->pos;
 	/* calc how many suffixes from right
@@ -423,7 +428,7 @@ namespace bwt {
 
       /* calc new rank of right suffixes */
       /* paralle for */
-      for (ssa_iterator it = r.pos_begin(); it.has_next(); it.next()) {
+      for (ssa_iterator it = r.pos_begin(mem); it.has_next(); it.next()) {
 	idx_t new_rank = it.e->rank, pos = it.e->pos;
 	assert(a + c <= new_rank);
 	assert(         new_rank < b + c);
@@ -582,8 +587,7 @@ namespace bwt {
       b - 1)
   */
   bwt sa_to_bwt(const alpha_t * T, idx_t n, idx_t a, idx_t b, idx_t * SA, 
-		alpha_t * L, alpha_t * W,
-		bwt_opt& opt) {
+		alpha_t * L, mallocator& mem, bwt_opt& opt) {
     pfor(idx_t, r, a, b, opt.sa_to_bwt_gran) {
       idx_t i = SA[r];
       assert(a <= i);
@@ -600,9 +604,7 @@ namespace bwt {
     bwt bwt;
     bwt.init(T, n, L, a, b);
     /* sample suffix array */
-    bwt.sample_sa(SA, min(bwt.b - bwt.a, opt.ssa_n_samples), opt);
-    /* build wavelet matrix and char counts */
-    bwt.init_extra(W, opt);
+    bwt.sample_sa(SA, min(bwt.b - bwt.a, opt.ssa_n_samples), mem, opt);
     return bwt;
   }
 
@@ -611,19 +613,23 @@ namespace bwt {
       to which the last suffix T[b-1:] was
       written. i.e., SA[x] = b - 1 */
   bwt bwt_leaf(const alpha_t * T, idx_t n, 
-	       idx_t a, idx_t b, alpha_t * L, alpha_t * W,
+	       idx_t a, idx_t b, alpha_t * L, 
+	       mallocator& mem,
 	       bwt_opt& opt) {
     stat.start(ts_event_bwt_leaf);
     assert(a < b);
     /* memory allocation: can use a fixed address */
-    idx_t * SA0 = new_<idx_t>(b - a, "leaf sa");
+    idx_t * SA0 = mem.new_<idx_t>(b - a, mem_reason_leaf_sa);
     idx_t * SA = SA0 - a;
-    sa_range(T, n, a, b, SA, opt.sort_rec_threshold, opt.merge_rec_threshold);
+    sa_range(T, n, a, b, SA, mem,
+	     opt.sort_rec_threshold, 
+	     opt.merge_rec_threshold,
+	     opt.sa_init_gran);
     if (0) sa_show(T, n, a, b, SA);
-    bwt res = sa_to_bwt(T, n, a, b, SA, L, W, opt);
+    bwt res = sa_to_bwt(T, n, a, b, SA, L, mem, opt);
     assert(SA[res.s_rank] == a);
     assert(SA[res.e_rank] + 1 == b);
-    delete_(SA0, b - a, "leaf sa");
+    mem.delete_(SA0, b - a, mem_reason_leaf_sa);
     stat.end(ts_event_bwt_leaf);
     return res;
   }
@@ -721,7 +727,7 @@ namespace bwt {
      record gap_map[j] = i
   */
 
-  int build_gap(bwt& l, bwt& r, gap_array& gap, bwt_opt& opt) {
+  int build_gap(bwt& l, bwt& r, gap_array& gap, mallocator& mem, bwt_opt& opt) {
     stat.start(ts_event_bwt_build_gap);
     assert(l.T == r.T);
     assert(l.n == r.n);
@@ -733,7 +739,7 @@ namespace bwt {
       assert(r.b - 1 == r.sa(r.e_rank));
     }
 #endif
-    r.ssa.sort_by_pos();
+    r.ssa.sort_by_pos(mem);
     /* parallel (build gap) */
     // for (idx_t begin = r.a; begin < r.b; begin += opt.build_gap_segment_sz)
     pfor_step(idx_t, begin, r.a, r.b, opt.build_gap_segment_sz) {
@@ -775,20 +781,22 @@ namespace bwt {
 	}
       }
     } end_pfor_step;
-    gap.set_prefix_sum();
+    gap.set_prefix_sum(mem, opt.prefix_sum_gran);
     stat.end(ts_event_bwt_build_gap);
     return 1;
   }
 
   /* given bwt of range T[a:b] and bwt of range T[b:c],
      merge them into a single bwt of range T[a:c] */
-  bwt bwt_merge(bwt& l, bwt& r, alpha_t * w, bwt_opt& opt) {
+  bwt bwt_merge(bwt& l, bwt& r, alpha_t * w, mallocator& mem, bwt_opt& opt) {
     stat.start(ts_event_bwt_merge_bwt);
     assert(l.L == r.L);
     assert(l.b == r.a);
+    l.init_extra(w, mem, opt);
     gap_array gap;
-    gap.init(l.a, l.b, opt.gap_sum_gran, opt.gap_init_gran);
-    build_gap(l, r, gap, opt);
+    gap.init(l.a, l.b, mem,
+	     opt.gap_sum_gran, opt.gap_init_gran);
+    build_gap(l, r, gap, mem, opt);
     /* gap[i] is the number of suffixes s from r s.t.
        T[SA[i-1]:] < s < T[SA[i]:]. therefore, the merged
        suffix array should look like:
@@ -825,18 +833,17 @@ namespace bwt {
     pmemcpy((void*)&l.L[l.a], (void*)&w[l.a], 
 	    sizeof(alpha_t) * (r.b - l.a), opt.memcpy_gran);
     stat.end(ts_event_bwt_memcpy);
-    bwt bwt;
-    bwt.init(l.T, l.n, l.L, l.a, r.b);
+    bwt m;
+    m.init(l.T, l.n, l.L, l.a, r.b);
     /* build samples for the merged array, based on samples
        from left and right */
-    bwt.resample_sa(l.ssa, r.ssa, l.b, min(bwt.b - bwt.a, opt.ssa_n_samples), 
-		    gap, opt);
-    bwt.init_extra(w, opt);
-    gap.fini();
-    l.fini(opt);
-    r.fini(opt);
+    m.resample_sa(l.ssa, r.ssa, l.b, min(m.b - m.a, opt.ssa_n_samples), 
+		  gap, mem, opt);
+    gap.fini(mem);
+    l.fini(mem, opt);
+    r.fini(mem, opt);
     stat.end(ts_event_bwt_merge_bwt);
-    return bwt;
+    return m;
   }
 
   /* recursively built bwt of T[a:b], which
@@ -845,25 +852,33 @@ namespace bwt {
      as a scratch memory */
 
   bwt bwt_rec(const alpha_t * T, idx_t n, idx_t a, idx_t b, 
-	      alpha_t * L, alpha_t * W,
+	      alpha_t * L, alpha_t * W, mallocator& mem,
 	      bwt_opt& opt) {
     if (b - a <= opt.bwt_rec_threshold) {
-      return bwt_leaf(T, n, a, b, L, W, opt);
+      return bwt_leaf(T, n, a, b, L, mem, opt);
     } else {
       idx_t c = (a + b) / 2;
-      decl_task_group tg;
-      bwt l;
-      tg_run(tg, l = bwt_rec(T, n, a, c, L, W, opt));
-      bwt r = bwt_rec(T, n, c, b, L, W, opt);
-      tg_wait(tg);
-      return bwt_merge(l, r, W, opt);
+      bwt l = bwt_rec(T, n, a, c, L, W, mem, opt);
+      bwt r = bwt_rec(T, n, c, b, L, W, mem, opt);
+      return bwt_merge(l, r, W, mem, opt);
     }
   }
 
-  bwt pmbwt(const alpha_t * T, idx_t n, alpha_t * L, bwt_opt& opt) {
-    alpha_t * W = new_<alpha_t>(n, "workspace to merge");
-    bwt t = bwt_rec(T, n, 0, n, L, W, opt);
-    delete_(W, n, "workspace to merge");
+  bwt pmbwt(const alpha_t * T, idx_t n, alpha_t * L, 
+	    int stat_level, mallocator& mem, bwt_opt& opt) {
+    stat.reset();
+    stat.level = stat_level;
+    stat.start(ts_event_pmbwt);
+    tsc_t t0 = get_tsc();
+
+    alpha_t * W = mem.new_<alpha_t>(n, mem_reason_workspace_to_merge);
+    bwt t = bwt_rec(T, n, 0, n, L, W, mem, opt);
+    mem.delete_(W, n, mem_reason_workspace_to_merge);
+
+    tsc_t t1 = get_tsc();
+    stat.end(ts_event_pmbwt);
+    stat.print();
+    printf("%llu clocks to build bwt for %ld chars\n", t1 - t0, n);
     return t;
   }
 
