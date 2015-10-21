@@ -21,6 +21,18 @@ in progress.
 
 ## How to use
 
+### For impatients
+
+```
+cd src
+cp Makefile.in Makefile
+make
+```
+(I wish I make it autotool-compliant, but currently you should manually copy Makefile.in to Makefile).
+
+It should build two programs, simplest_example and pmbwt.
+
+
 ### Basics
 Currently, it is provided as a set of include
 files, under include/ directory.
