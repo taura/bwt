@@ -358,7 +358,8 @@ namespace bwt {
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
 	case mem_reason_wavelet_matrix_bitmaps: /* n */
-	  assert(n <= (N / 2));
+	  //assert(n <= (N / 2));
+	  assert(n <= N);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
 	case mem_reason_succinct_bitvec_prefix_sum_temp:
@@ -371,20 +372,24 @@ namespace bwt {
 	    break;
 	  }
 	case mem_reason_gap_small: /* n */
-	  assert(n <= (N / 2));
+	  // assert(n <= (N / 2));
+	  assert(n <= N);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
 	case mem_reason_gap_overflow: /* n/... */
-	  assert(n <= (N / 2) / 64);
+	  // assert(n <= (N / 2) / 64);
+	  assert(n <= N / 64);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
 	case mem_reason_gap_prefix_sum: /* n/.../... */
-	  assert(n <= (N / 2) / opt.gap_sum_gran + 1);
+	  // assert(n <= (N / 2) / opt.gap_sum_gran + 1);
+	  assert(n <= N / opt.gap_sum_gran + 1);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
 	case mem_reason_gap_prefix_sum_temp:
 	  {
-	    idx_t ns = (N / 2) / opt.gap_sum_gran + 1;
+	    // idx_t ns = (N / 2) / opt.gap_sum_gran + 1;
+	    idx_t ns = N / opt.gap_sum_gran + 1;
 	    idx_t m = max((4 * ns) / opt.prefix_sum_gran - 1, 1);
 	    (void)m;
 	    assert(n <= m);

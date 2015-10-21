@@ -65,10 +65,10 @@ int check_result(bwt::bwt& t, bwt::alpha_t * T, bwt::idx_t n,
 		 bwt::mallocator& mem, bwt::bwt_opt& opt) {
   /* space to get the original string back from bwt */
   bwt::alpha_t * I = new bwt::alpha_t[n];
-  t.init_extra(I, mem, opt);
   unsigned short rg[3] = { 918, 729, 723 };
   random_init(I, n, rg);
   printf("checking result ... "); fflush(stdout);
+  t.init_extra(I, mem, opt);
   t.ibwt(I);
   int r = check_equal(T, I, 0, n);
   if (r) {

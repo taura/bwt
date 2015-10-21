@@ -5,17 +5,17 @@ opts+=-std=c++0x
 opts+=-I../include 
 
 # serial
-#opts+=-Dparallel_model=parallel_model_none
+opts+=-Dparallel_model=parallel_model_none
 # tbb
-opts+=-Dparallel_model=parallel_model_native_tbb
-libs+=-ltbb -ltbbmalloc
+# opts+=-Dparallel_model=parallel_model_native_tbb
+# libs+=-ltbb -ltbbmalloc
 # profiling
 #CXXFLAGS:=$(opts) -O3 -fno-inline -fno-omit-frame-pointer -fverbose-asm -pg
 #CXXFLAGS:=$(opts) -O3 -funroll-loops -DNDEBUG 
-#CXXFLAGS:=$(opts) -O3
-CXXFLAGS:=$(opts) -O0 -gdwarf-4
+CXXFLAGS:=$(opts) -O3
+#CXXFLAGS:=$(opts) -O0 -gdwarf-4
 
-apps:=simplest pmbwt
+apps:=simplest_example pmbwt
 
 all : $(apps)
 
