@@ -26,20 +26,26 @@ Currently, it is provided as a set of include
 files, under include/ directory.
 The toplevel file to include is bwt.h.
 
-The simplest usage is this and it is in src/simplest.cc
+The simplest usage is this and it is in src/simplest_example.cc
 
 ```
 #include "bwt.h"
 
   ...
-  const bwt::alpha_t * T = (bwt::alpha_t *)"original text";
+  /* input string (must end with null character) */
+  const bwt::alpha_t * T = (bwt::alpha_t *)"mississippi";
+  /* length must include the terminating null character */
   int n = strlen((const char *)T) + 1;
+  /* allocate space for BWT */
   bwt::alpha_t * L = new bwt::alpha_t[n];
 
+  /* set various parameters (tuning knobs) */
   bwt::bwt_opt opt;
   opt.set_defaults(T, n);
+  bwt::mallocator mem(n, opt);
 
-  bwt::pmbwt(T, n, L, opt);
+  /* do the real work */
+  bwt::pmbwt(T, n, L, 0, mem, opt);
   ...
 ```
 

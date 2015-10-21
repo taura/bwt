@@ -13,10 +13,13 @@ int test_wavelet_matrix(bwt::idx_t n, bwt::idx_t m,
     s[i] = a;
   }
   bwt::wavelet_matrix wm;
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
 
   printf("building a wavelet matrix of %lu elements ...\n", n);
   bwt::tsc_t c0 = bwt::get_tsc();
-  wm.init(s, n, w, alpha0, alpha1, segment_sz);
+  wm.init(s, n, w, mem, alpha0, alpha1, segment_sz);
   bwt::tsc_t c1 = bwt::get_tsc();
   printf("took %llu cycles\n", c1 - c0);
   for (bwt::idx_t i = 0; i < m; i++) {
@@ -35,6 +38,7 @@ int test_wavelet_matrix(bwt::idx_t n, bwt::idx_t m,
       return 0;
     }
   }
+  wm.fini(mem);
   delete s;
   printf("OK\n");
   return 1;

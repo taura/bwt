@@ -14,11 +14,14 @@ int test_succinct_bit_vector(bwt::idx_t n, bwt::idx_t m) {
     a[i] = (uint8_t)(nrand48(rg) % 256);
   }
   bwt::succinct_bit_vector s;
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
   
   printf("building a succinct bit vector bits@%p[%ld,%ld] (%ld bits) ...\n", 
 	 a, begin, end, (end - begin));
   bwt::tsc_t c0 = bwt::get_tsc();
-  s.init(a, begin, end);
+  s.init(a, begin, end, mem);
   bwt::tsc_t c1 = bwt::get_tsc();
   printf("took %llu cycles\n", c1 - c0);
   for (bwt::idx_t i = 0; i < m; i++) {
@@ -36,7 +39,7 @@ int test_succinct_bit_vector(bwt::idx_t n, bwt::idx_t m) {
       return 0;
     }
   }
-  s.fini();
+  s.fini(mem);
   delete a0;
   printf("OK\n");
   return 1;			/* OK */

@@ -27,6 +27,9 @@ int test_psort(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
      have at least 2 elements (1 element from
      each bwt to merge) */
   point * P = new point[n];
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
 
   for (bwt::idx_t j = 0; j < m; j++) {
     for (bwt::idx_t i = 0; i < n; i++) {
@@ -34,7 +37,7 @@ int test_psort(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
       P[i].y = erand48(rg);
     }
     point_less lt;
-    bwt::psort(P, P + n, lt, 10, 5);
+    bwt::psort(P, P + n, lt, mem, bwt::mem_reason_sort_leaf_sa, 10, 5);
     if (bwt::check_sorted(P, P + n, lt)) {
       printf("%3ld OK\n", j);
     } else {

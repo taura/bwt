@@ -17,10 +17,13 @@ int test_ssa_conc(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
   };
 
   bwt::idx_t * V = new bwt::idx_t[n];
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
 
   for (bwt::idx_t j = 0; j < m; j++) {
     bwt::sampled_suffix_array ssa;
-    ssa.init(n);
+    ssa.init(n, mem);
     for (bwt::idx_t i = 0; i < n; i++) {
       V[i] = nrand48(rg);
     }
@@ -38,7 +41,7 @@ int test_ssa_conc(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
       if (!bwt_check(ssa.get(V[i]) == V[i] + 1)) 
 	return 0;
     }
-    ssa.fini();
+    ssa.fini(mem);
     printf("%ld OK\n", j);
   }
   delete[] V;

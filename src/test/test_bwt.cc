@@ -41,8 +41,9 @@ int test_bwt(bwt::idx_t n, bwt::idx_t m,
     /* use I for workspace */
     bwt::bwt_opt opt;
     opt.set_defaults(T, n);
+    bwt::mallocator mem(n, opt);
 
-    bwt::bwt bwt = bwt_leaf(T, n, a, b, L, I, opt);
+    bwt::bwt bwt = bwt_leaf(T, n, a, b, L, mem, opt);
     bwt::random_init(I, n, rg);
     bwt.ibwt(I);
     /* check if we got the identical string back */
@@ -52,7 +53,7 @@ int test_bwt(bwt::idx_t n, bwt::idx_t m,
       printf("%3lu NG\n", j);
       return 0;
     }
-    bwt.fini(opt);
+    bwt.fini(mem, opt);
   }
   delete[] T;
   delete[] L;

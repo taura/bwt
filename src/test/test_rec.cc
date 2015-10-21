@@ -42,21 +42,22 @@ int test_rec(bwt::idx_t n, bwt::idx_t m,
 
     bwt::bwt_opt opt;
     opt.set_defaults(T, n);
+    bwt::mallocator mem(n, opt);
     
     bwt::random_init(L, n, rg);
     /* bwt of the T[a:b] and check it's correct */
     printf("====== recursive ======\n");
-    bwt::mstat.reset();
-    bwt::mstat.level = 0;
-    bwt::stat.reset();
-    bwt::stat.level = 0;
+    mem.reset(n, opt);
+    mem.level = 0;
     bwt::stat.start(bwt::ts_event_bwt_range_rec);
     bwt::tsc_t t0 = bwt::get_tsc();
     /* workspace for merge, necessary only for recursive algorithm */
-    bwt::alpha_t * W = bwt::new_<bwt::alpha_t>(n, "workspace to merge");
+    //bwt::alpha_t * W = bwt::new_<bwt::alpha_t>(n, "workspace to merge");
+    bwt::alpha_t * W = mem.new_<bwt::alpha_t>(n, bwt::mem_reason_workspace_to_merge);
     //bwt t = bwt_range_rec(T, n, a, b, threshold, ns, alpha0, alpha1, L, W);
-    bwt::bwt t = bwt::bwt_rec(T, n, a, b, L, W, opt);
-    bwt::delete_(W, n, "workspace to merge");
+    bwt::bwt t = bwt::bwt_rec(T, n, a, b, L, W, mem, opt);
+    //bwt::delete_(W, n, "workspace to merge");
+    mem.delete_(W, n, bwt::mem_reason_workspace_to_merge);
     bwt::tsc_t t1 = bwt::get_tsc();
     printf("%llu clocks to build bwt for %ld chars\n",
 	   t1 - t0, b - a);
@@ -65,9 +66,9 @@ int test_rec(bwt::idx_t n, bwt::idx_t m,
     bwt::stat.print();
     bwt::random_init(I, n, rg);
     t.ibwt(I);
-    t.fini(opt);
+    t.fini(mem, opt);
     bwt::check_equal(T, I, a, b);
-    bwt::mstat.print();
+    mem.print();
 
     if (bwt::check_equal(T, I, a, b)) {
       printf("%lu OK\n", j);

@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <new>
 
+#include "typedefs.h"
+#include "opts.h"
+
 namespace bwt {
 
   /* check. it is similar to assert, but must

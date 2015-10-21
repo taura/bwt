@@ -253,6 +253,8 @@ namespace bwt {
 		   mallocator& mem, mem_reason_kind_t reason) {
 #if parallel_model == parallel_model_none
     (void)gran;
+    (void)mem;
+    (void)reason;
     return serial_prefix_sum(x, a, b, 0);
 #else
     /* TODO : allocate s on stack when small? 
@@ -275,6 +277,8 @@ namespace bwt {
 	       mallocator& mem, mem_reason_kind_t reason,
 	       idx_t sort_rec_threshold, idx_t merge_rec_threshold) {
 #if parallel_model == parallel_model_none
+    (void)mem;
+    (void)reason;
     (void)sort_rec_threshold;
     (void)merge_rec_threshold;
     std::sort(a_beg, a_end, lt);

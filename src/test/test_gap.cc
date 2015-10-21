@@ -16,6 +16,9 @@ int test_gap_array(bwt::idx_t n, bwt::idx_t K, bwt::idx_t m, uint64_t seed) {
     (unsigned short)((seed >> 16) & 65535), 
     (unsigned short)((seed >>  0) & 65535), 
   };
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
   
   for (bwt::idx_t j = 0; j < m; j++) {
     bwt::idx_t a = (j == 0 ? 0 : nrand48(rg) % (n - 1));
@@ -30,7 +33,7 @@ int test_gap_array(bwt::idx_t n, bwt::idx_t K, bwt::idx_t m, uint64_t seed) {
     }
 
     bwt::gap_array gap;
-    gap.init(a, b, 0);		/* granularity does not matter */
+    gap.init(a, b, mem, 0);		/* granularity does not matter */
     std::map<bwt::idx_t,bwt::idx_t> counts;
     /* generate data and put it in the map */
     printf("%ld a=%ld, b=%ld, %ld elems\n", j, a, b, b - a + 1);

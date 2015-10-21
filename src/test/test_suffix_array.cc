@@ -28,12 +28,16 @@ int test_sa(bwt::idx_t n, bwt::idx_t m,
 	    bwt::alpha_t alpha0, bwt::alpha_t alpha1) {
   unsigned short rg[3] = { 1, 2, 3 };
   bwt::alpha_t * T = new bwt::alpha_t[n];
+  bwt::bwt_opt opt;
+  opt.set_defaults(T, n);
+  bwt::mallocator mem(n, opt);
+
   for (bwt::idx_t i = 0; i < n - 1; i++) {
     T[i] = alpha0 + (nrand48(rg) % (alpha1 - alpha0));
   }
   T[n - 1] = 0;
   bwt::idx_t * SA = new bwt::idx_t[n];
-  if (!bwt::sa_range(T, n, 0, n, SA)) return 0;
+  if (!bwt::sa_range(T, n, 0, n, SA, mem)) return 0;
   for (bwt::idx_t i = 0; i < m; i++) {
     bwt::idx_t k = nrand48(rg) % (n - 1);
     if (!bwt_check(cmp_string(T + SA[k], T + SA[k + 1], T + n) < 0)) {

@@ -25,12 +25,15 @@ int test_ssa(bwt::idx_t n, bwt::idx_t m,
   }
   T[n - 1] = 0;
   /* workspace */
-  bwt::alpha_t * W = new bwt::alpha_t[n];
-  
+  //bwt::alpha_t * W = new bwt::alpha_t[n];
   /* bwt of SA[a:b] into SA */
   bwt::idx_t * SA = new bwt::idx_t[n];
   /* bwt of T[a:b] into L[a:b] */
   bwt::alpha_t * L = new bwt::alpha_t[n];
+
+  bwt::bwt_opt opt;
+  opt.set_defaults(0, n);
+  bwt::mallocator mem(n, opt);
 
   for (bwt::idx_t j = 0; j < m; j++) {
     /* always test the full string case */
@@ -41,11 +44,11 @@ int test_ssa(bwt::idx_t n, bwt::idx_t m,
     assert(a < b);
     assert(b <= n);
     bwt::random_init(L, n, rg);
-    bwt::sa_range(T, n, a, b, SA);
+    bwt::sa_range(T, n, a, b, SA, mem);
     bwt::bwt_opt opt;
     opt.set_defaults(T, n);
 
-    bwt::bwt bwt = bwt_leaf(T, n, a, b, L, W, opt);
+    bwt::bwt bwt = bwt_leaf(T, n, a, b, L, mem, opt);
     /* compare bs computes SA[r] for all r */
     for (bwt::idx_t r = a; r < b; r++) {
       if (!bwt_check(bwt.sa(r) == SA[r])) {
@@ -53,7 +56,7 @@ int test_ssa(bwt::idx_t n, bwt::idx_t m,
 	return 0;
       }
     }
-    bwt.fini(opt);
+    bwt.fini(mem, opt);
     printf("%lu OK\n", j);
   }
   delete[] T;
