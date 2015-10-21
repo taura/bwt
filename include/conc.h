@@ -283,6 +283,8 @@ namespace bwt {
     (void)merge_rec_threshold;
     std::sort(a_beg, a_end, lt);
 #elif parallel_model == parallel_model_native_tbb
+    (void)mem;
+    (void)reason;
     (void)sort_rec_threshold;
     (void)merge_rec_threshold;
     tbb::parallel_sort(a_beg, a_end, lt);
