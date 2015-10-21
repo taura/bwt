@@ -286,6 +286,9 @@ namespace bwt {
     int n_allocated[n_mem_reasons];
     bwt_opt opt;
 
+  mallocator(bwt_opt& opt) : mallocator(0, opt) {
+    }
+
     mallocator(idx_t N, bwt_opt& opt) {
       level = 0;
       for (int k = 0; k < n_mem_reasons; k++) {
@@ -335,100 +338,102 @@ namespace bwt {
     template<class T>
     T * new_(size_t n, mem_reason_kind_t reason_idx) {
       T * p = new T[n];
-      switch (reason_idx) {
-      case mem_reason_leaf_sa:	/* leaf size */
-	assert(n <= opt.bwt_rec_threshold);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_count_alphabets: /* constant */
-	assert(n == opt.alpha_max + 1);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_wavelet_matrix_count_bits: /* n */
-	assert(n <= ((N + opt.wavelet_matrix_sum_interval - 1) 
-		     / opt.wavelet_matrix_sum_interval) * 2);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_wavelet_matrix_bitvec_array: /* constant */
-	assert(n <= int_log2(opt.alpha_max));
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_wavelet_matrix_bitmaps: /* n */
-	assert(n <= (N / 2));
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_succinct_bitvec_prefix_sum_temp:
-	{
-	  idx_t ns = N / superblock_bits + 1;
-	  idx_t m = max((4 * ns) / opt.prefix_sum_gran - 1, 1);
-	  (void)m;
-	  assert(n <= m);
+      if (N) {
+	switch (reason_idx) {
+	case mem_reason_leaf_sa:	/* leaf size */
+	  assert(n <= opt.bwt_rec_threshold);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
-	}
-      case mem_reason_gap_small: /* n */
-	assert(n <= (N / 2));
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_gap_overflow: /* n/... */
-	assert(n <= (N / 2) / 64);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_gap_prefix_sum: /* n/.../... */
-	assert(n <= (N / 2) / opt.gap_sum_gran + 1);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_gap_prefix_sum_temp:
-	{
-	  idx_t ns = (N / 2) / opt.gap_sum_gran + 1;
-	  idx_t m = max((4 * ns) / opt.prefix_sum_gran - 1, 1);
-	  (void)m;
-	  assert(n <= m);
+	case mem_reason_count_alphabets: /* constant */
+	  assert(n == opt.alpha_max + 1);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
-	}
-      case mem_reason_workspace_to_merge: /* n */
-	assert(n <= N);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_sort_leaf_sa: /*  */
-	assert(n <= opt.bwt_rec_threshold);
-	assert(n_allocated[reason_idx] < 1);
-	break;
-      case mem_reason_sort_sample_sa: /*  */
-	{
-	  idx_t ns = (1 << (1 + calc_log_sample_sa_sz(min(N, opt.ssa_n_samples))));
-	  (void)ns;
-	  assert(n <= ns);
+	case mem_reason_wavelet_matrix_count_bits: /* n */
+	  assert(n <= ((N + opt.wavelet_matrix_sum_interval - 1) 
+		       / opt.wavelet_matrix_sum_interval) * 2);
 	  assert(n_allocated[reason_idx] < 1);
 	  break;
-	}
-      case mem_reason_sample_sa:
-	{
-	  idx_t ns = (1 << (1 + calc_log_sample_sa_sz(min(N, opt.ssa_n_samples))));
-	  (void)ns;
-	  assert(n <= ns);
-	  assert(n_allocated[reason_idx] < n_sample_sa);
+	case mem_reason_wavelet_matrix_bitvec_array: /* constant */
+	  assert(n <= int_log2(opt.alpha_max));
+	  assert(n_allocated[reason_idx] < 1);
 	  break;
-	}
-      case mem_reason_succinct_bitvec_superblock:
-	{
-	  idx_t ns = N / superblock_bits + 1;
-	  (void)ns;
-	  assert(n <= ns);
-	  assert(n_allocated[reason_idx] < 8);
+	case mem_reason_wavelet_matrix_bitmaps: /* n */
+	  assert(n <= (N / 2));
+	  assert(n_allocated[reason_idx] < 1);
 	  break;
-	}
-      case mem_reason_succinct_bitvec_block:
-	{
-	  idx_t nb = N / block_bits + 1;
-	  (void)nb;
-	  assert(n <= nb);
-	  assert(n_allocated[reason_idx] < 8);
+	case mem_reason_succinct_bitvec_prefix_sum_temp:
+	  {
+	    idx_t ns = N / superblock_bits + 1;
+	    idx_t m = max((4 * ns) / opt.prefix_sum_gran - 1, 1);
+	    (void)m;
+	    assert(n <= m);
+	    assert(n_allocated[reason_idx] < 1);
+	    break;
+	  }
+	case mem_reason_gap_small: /* n */
+	  assert(n <= (N / 2));
+	  assert(n_allocated[reason_idx] < 1);
 	  break;
+	case mem_reason_gap_overflow: /* n/... */
+	  assert(n <= (N / 2) / 64);
+	  assert(n_allocated[reason_idx] < 1);
+	  break;
+	case mem_reason_gap_prefix_sum: /* n/.../... */
+	  assert(n <= (N / 2) / opt.gap_sum_gran + 1);
+	  assert(n_allocated[reason_idx] < 1);
+	  break;
+	case mem_reason_gap_prefix_sum_temp:
+	  {
+	    idx_t ns = (N / 2) / opt.gap_sum_gran + 1;
+	    idx_t m = max((4 * ns) / opt.prefix_sum_gran - 1, 1);
+	    (void)m;
+	    assert(n <= m);
+	    assert(n_allocated[reason_idx] < 1);
+	    break;
+	  }
+	case mem_reason_workspace_to_merge: /* n */
+	  assert(n <= N);
+	  assert(n_allocated[reason_idx] < 1);
+	  break;
+	case mem_reason_sort_leaf_sa: /*  */
+	  assert(n <= opt.bwt_rec_threshold);
+	  assert(n_allocated[reason_idx] < 1);
+	  break;
+	case mem_reason_sort_sample_sa: /*  */
+	  {
+	    idx_t ns = (1 << (1 + calc_log_sample_sa_sz(min(N, opt.ssa_n_samples))));
+	    (void)ns;
+	    assert(n <= ns);
+	    assert(n_allocated[reason_idx] < 1);
+	    break;
+	  }
+	case mem_reason_sample_sa:
+	  {
+	    idx_t ns = (1 << (1 + calc_log_sample_sa_sz(min(N, opt.ssa_n_samples))));
+	    (void)ns;
+	    assert(n <= ns);
+	    assert(n_allocated[reason_idx] < n_sample_sa);
+	    break;
+	  }
+	case mem_reason_succinct_bitvec_superblock:
+	  {
+	    idx_t ns = N / superblock_bits + 1;
+	    (void)ns;
+	    assert(n <= ns);
+	    assert(n_allocated[reason_idx] < 8);
+	    break;
+	  }
+	case mem_reason_succinct_bitvec_block:
+	  {
+	    idx_t nb = N / block_bits + 1;
+	    (void)nb;
+	    assert(n <= nb);
+	    assert(n_allocated[reason_idx] < 8);
+	    break;
+	  }
+	default:
+	  check(0);
 	}
-      default:
-	check(0);
       }
       n_allocated[reason_idx]++;
 

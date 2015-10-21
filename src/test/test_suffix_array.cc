@@ -29,8 +29,8 @@ int test_sa(bwt::idx_t n, bwt::idx_t m,
   unsigned short rg[3] = { 1, 2, 3 };
   bwt::alpha_t * T = new bwt::alpha_t[n];
   bwt::bwt_opt opt;
-  opt.set_defaults(T, n);
-  bwt::mallocator mem(n, opt);
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
 
   for (bwt::idx_t i = 0; i < n - 1; i++) {
     T[i] = alpha0 + (nrand48(rg) % (alpha1 - alpha0));

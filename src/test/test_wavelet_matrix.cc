@@ -14,8 +14,8 @@ int test_wavelet_matrix(bwt::idx_t n, bwt::idx_t m,
   }
   bwt::wavelet_matrix wm;
   bwt::bwt_opt opt;
-  opt.set_defaults(0, n);
-  bwt::mallocator mem(n, opt);
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
 
   printf("building a wavelet matrix of %lu elements ...\n", n);
   bwt::tsc_t c0 = bwt::get_tsc();

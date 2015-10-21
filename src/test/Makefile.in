@@ -2,9 +2,9 @@ opts:=
 opts+=-I../../include 
 opts+=-Wall -Wextra -std=c++0x
 opts+=-Dparallel_model=parallel_model_none
-opts+=-O0 -gdwarf-4
-#opts+=-O3
-opts+=-fopenmp
+#opts+=-O0 -gdwarf-4
+opts+=-O3
+#opts+=-fopenmp
 #opts+=$(opts) -O3 -fno-inline -fno-omit-frame-pointer -fverbose-asm -pg
 #opts+=$(opts) -O3 -funroll-loops -DNDEBUG 
 libs:=

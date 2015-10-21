@@ -25,7 +25,13 @@ int test_bwt(bwt::idx_t n, bwt::idx_t m,
   bwt::alpha_t * L = new bwt::alpha_t[n];
   /* inverse BWT */
   bwt::alpha_t * I = new bwt::alpha_t[n];
+  /* workspace */
+  bwt::alpha_t * W = new bwt::alpha_t[n];
   
+  bwt::bwt_opt opt;
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
+
   for (bwt::idx_t j = 0; j < m; j++) {
     /* always test the full string case */
     bwt::idx_t a = (j == 0 ? 0 : nrand48(rg) % n);
@@ -39,12 +45,11 @@ int test_bwt(bwt::idx_t n, bwt::idx_t m,
        situations; here it's safe because we know 
        we do not use sa */
     /* use I for workspace */
-    bwt::bwt_opt opt;
-    opt.set_defaults(T, n);
-    bwt::mallocator mem(n, opt);
 
+    mem.reset(0, opt);
     bwt::bwt bwt = bwt_leaf(T, n, a, b, L, mem, opt);
     bwt::random_init(I, n, rg);
+    bwt.init_extra(W, mem, opt);
     bwt.ibwt(I);
     /* check if we got the identical string back */
     if (bwt::check_equal(T, I, a, b)) {

@@ -15,8 +15,8 @@ int test_succinct_bit_vector(bwt::idx_t n, bwt::idx_t m) {
   }
   bwt::succinct_bit_vector s;
   bwt::bwt_opt opt;
-  opt.set_defaults(0, n);
-  bwt::mallocator mem(n, opt);
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
   
   printf("building a succinct bit vector bits@%p[%ld,%ld] (%ld bits) ...\n", 
 	 a, begin, end, (end - begin));

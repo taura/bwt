@@ -207,6 +207,9 @@ namespace bwt {
 	return 1 + max_num_ssa(n - n / 2, th);
       }
     }
+    void set_defaults() {
+      set_defaults(0, 0);
+    }
 
     void set_defaults(const alpha_t * T, idx_t n) {
       (void)T;			/* not used at this point */

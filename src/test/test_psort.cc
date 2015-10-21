@@ -28,8 +28,8 @@ int test_psort(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
      each bwt to merge) */
   point * P = new point[n];
   bwt::bwt_opt opt;
-  opt.set_defaults(0, n);
-  bwt::mallocator mem(n, opt);
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
 
   for (bwt::idx_t j = 0; j < m; j++) {
     for (bwt::idx_t i = 0; i < n; i++) {

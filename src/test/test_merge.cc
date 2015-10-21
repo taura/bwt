@@ -46,17 +46,17 @@ int test_merge(bwt::idx_t n, bwt::idx_t m,
     assert(a < c);
     assert(c < b);
     bwt::bwt_opt opt;
-    opt.set_defaults(T, n);
-    bwt::mallocator mem(n, opt);
+    opt.set_defaults();
+    bwt::mallocator mem(opt);
 
     /* workspace to merge M[a:c] and M[c:b] into M[a:b] */
-    // bwt::new_<bwt::alpha_t>(n, "workspace to merge");
     bwt::alpha_t * W = mem.new_<bwt::alpha_t>(n, bwt::mem_reason_workspace_to_merge);
     bwt::bwt t0_ = bwt_leaf(T, n, a, c, M, mem, opt);
     bwt::bwt t1_ = bwt_leaf(T, n, c, b, M, mem, opt);
     bwt::bwt t01 = bwt_merge(t0_, t1_, W, mem, opt);
     bwt::stat.print();
     bwt::random_init(I, n, rg);
+    t01.init_extra(W, mem, opt);
     t01.ibwt(I);
     t01.fini(mem, opt);
     //bwt::delete_(W, n, "workspace to merge");

@@ -18,8 +18,8 @@ int test_ssa_conc(bwt::idx_t n, bwt::idx_t m, uint64_t seed) {
 
   bwt::idx_t * V = new bwt::idx_t[n];
   bwt::bwt_opt opt;
-  opt.set_defaults(0, n);
-  bwt::mallocator mem(n, opt);
+  opt.set_defaults();
+  bwt::mallocator mem(opt);
 
   for (bwt::idx_t j = 0; j < m; j++) {
     bwt::sampled_suffix_array ssa;
