@@ -99,6 +99,7 @@ make
 You may want to run ./pmbwt --help to see what you can experiment with.
 In particular, you can specify the number of cores by --n_workers.
 
+
 How to specify the number of cores depends on the parallel framework you use.  Intel TBB, for example, uses all cores by default.  Pmbwt, however, changes this behavior to using whichever number of cores specified with --n_workers option, and its default is 1.  This behavior is written in pmbwt.cc and not built into the bwt library itself.  So, if you use the library from within your program, specifying the number of cores you use is up to you (or whichever underlying parallel framework you use).
 
 * src/test/*.cc are standalone test programs for various components constituing the library.
